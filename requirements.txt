@@ -1,3 +1,2 @@
 streamlit
-fpdf
-num2words
+reportlab
