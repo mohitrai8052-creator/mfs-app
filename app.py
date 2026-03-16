@@ -21,7 +21,7 @@ def generate_axis_data(start_bal, salary_text):
         data.append({"date": date_str, "desc": desc, "wit": wit, "dep": dep, "bal": current_bal})
     return data
 
-st.title("🏦 Mohit Financial - Axis Bank Pro")
+st.title("🏦 Axis Bank Official Statement Generator")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -37,19 +37,19 @@ salary_input = st.text_input("Salary Narration", "SALARY/TATA MOTORS LTD/MAR-26"
 
 if st.button("🚀 STEP 1: GENERATE DATA"):
     st.session_state.axis_data = generate_axis_data(opening_bal, salary_input)
-    st.success("Data Generated Successfully!")
+    st.success("Data ready!")
 
 if "axis_data" in st.session_state:
-    if st.button("📥 STEP 2: DOWNLOAD OFFICIAL PDF"):
+    if st.button("📥 STEP 2: DOWNLOAD FINAL PDF"):
         pdf = FPDF()
         pdf.add_page()
         
-        # Header - Axis Bank Style
-        pdf.set_text_color(151, 27, 47) # Axis Maroon Color
+        # Axis Header (Maroon)
+        pdf.set_text_color(151, 27, 47) 
         pdf.set_font("Helvetica", 'B', 16)
         pdf.cell(0, 10, "AXIS BANK", 0, 1, 'L')
         
-        pdf.set_text_color(0, 0, 0) # Back to Black
+        pdf.set_text_color(0, 0, 0)
         pdf.set_font("Helvetica", '', 8)
         pdf.cell(0, 4, f"Customer ID: {cust_id}", 0, 1, 'L')
         pdf.cell(0, 4, f"IFSC Code: {ifsc}", 0, 1, 'L')
@@ -62,26 +62,27 @@ if "axis_data" in st.session_state:
         pdf.cell(0, 5, f"Account Holder: {name}", 0, 1, 'L')
         pdf.ln(5)
         
-        # Table Header
-        pdf.set_fill_color(151, 27, 47) # Maroon Background
-        pdf.set_text_color(255, 255, 255) # White Text
+        # TABLE HEADER (Strict Alignment)
+        pdf.set_fill_color(151, 27, 47) 
+        pdf.set_text_color(255, 255, 255)
         pdf.set_font("Helvetica", 'B', 8)
-        pdf.cell(22, 8, "Tran Date", 1, 0, 'C', True)
-        pdf.cell(15, 8, "Chq No", 1, 0, 'C', True)
-        pdf.cell(80, 8, "Particulars", 1, 0, 'C', True)
-        pdf.cell(24, 8, "Debit", 1, 0, 'C', True)
-        pdf.cell(24, 8, "Credit", 1, 0, 'C', True)
+        # Width settings: 25, 20, 75, 25, 25, 25
+        pdf.cell(25, 8, "Tran Date", 1, 0, 'C', True)
+        pdf.cell(20, 8, "Chq No", 1, 0, 'C', True)
+        pdf.cell(70, 8, "Particulars", 1, 0, 'C', True)
+        pdf.cell(25, 8, "Debit", 1, 0, 'C', True)
+        pdf.cell(25, 8, "Credit", 1, 0, 'C', True)
         pdf.cell(25, 8, "Balance", 1, 1, 'C', True)
         
-        # Data Rows
+        # DATA ROWS
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("Helvetica", '', 7)
         for row in st.session_state.axis_data:
-            pdf.cell(22, 6, row['date'], 1, 0, 'C')
-            pdf.cell(15, 6, "", 1)
-            pdf.cell(80, 6, str(row['desc'])[:50], 1)
-            pdf.cell(24, 6, f"{row['wit']:,.2f}" if row['wit']>0 else "", 1, 0, 'R')
-            pdf.cell(24, 6, f"{row['dep']:,.2f}" if row['dep']>0 else "", 1, 0, 'R')
+            pdf.cell(25, 6, row['date'], 1, 0, 'C')
+            pdf.cell(20, 6, "", 1)
+            pdf.cell(70, 6, str(row['desc'])[:45], 1)
+            pdf.cell(25, 6, f"{row['wit']:,.2f}" if row['wit']>0 else "0.00", 1, 0, 'R')
+            pdf.cell(25, 6, f"{row['dep']:,.2f}" if row['dep']>0 else "0.00", 1, 0, 'R')
             pdf.cell(25, 6, f"{row['bal']:,.2f}", 1, 1, 'R')
         
         pdf.ln(10)
@@ -89,6 +90,7 @@ if "axis_data" in st.session_state:
         pdf.cell(0, 5, "This is a system generated output and requires no signature.", 0, 1, 'C')
         pdf.cell(0, 5, "++++ End of Statement ++++", 0, 1, 'C')
             
-        pdf.output("Axis_Official.pdf")
-        with open("Axis_Official.pdf", "rb") as f:
-            st.download_button("Download Final Axis Statement", f, file_name="Axis_Official_Statement.pdf")
+        pdf.output("Axis_Final_Pro.pdf")
+        with open("Axis_Final_Pro.pdf", "rb") as f:
+            st.download_button("Download Now", f, file_name="Axis_Official_Statement.pdf")
+            
