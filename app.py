@@ -25,11 +25,11 @@ st.title("🏦 Axis Bank Professional Statement")
 
 col1, col2 = st.columns(2)
 with col1:
-    name = st.text_input("Customer Name", "DNYANESHWAR RAMDAS BAVASKAR")
+    name = st.text_input("Name", "DNYANESHWAR RAMDAS BAVASKAR")
     address = st.text_area("Address", "GL G 3 MAHALAXMI APPARTMENT 2\nNARAYAN NAGAR SOCIETY\nPUNAGAM SURAT\nGUJARAT-395010")
-    cust_id = st.text_input("Customer ID", "976307289")
+    cust_id = st.text_input("Cust ID", "976307289")
 with col2:
-    acc_no = st.text_input("Account Number", "925010033967742")
+    acc_no = st.text_input("Acc No", "925010033967742")
     ifsc = st.text_input("IFSC", "UTIB0001306")
     micr = st.text_input("MICR", "395211007")
     opening_bal = st.number_input("Opening Balance", value=0.0)
@@ -65,7 +65,7 @@ if "axis_data" in st.session_state:
         pdf.cell(0, 6, f"Statement of Axis Account No : {acc_no} for the period (01-09-2025 To 08-02-2026)", 0, 1, 'L')
         pdf.ln(2)
 
-        # --- TABLE HEADER --- (Clean line format)
+        # --- TABLE HEADER --- (Plain lines, No Boxes)
         pdf.line(10, pdf.get_y(), 200, pdf.get_y())
         pdf.set_font("Helvetica", 'B', 7)
         pdf.cell(20, 7, "Tran Date", 0, 0, 'C')
@@ -84,7 +84,7 @@ if "axis_data" in st.session_state:
         pdf.cell(25, 6, "", 0, 0)
         pdf.cell(25, 6, f"{opening_bal:,.2f}", 0, 1, 'R')
 
-        # --- ROWS ---
+        # --- ROWS (No Border) ---
         for row in st.session_state.axis_data:
             pdf.cell(20, 5, row['date'], 0, 0, 'C')
             pdf.cell(15, 5, "", 0, 0)
@@ -100,6 +100,6 @@ if "axis_data" in st.session_state:
         footer = "REGISTERED OFFICE - AXIS BANK LTD, TRISHUL, Ahmedabad. 380006.\nThis is a system generated output and requires no signature.\n++++ End of Statement ++++"
         pdf.multi_cell(0, 4, footer, 0, 'C')
             
-        pdf.output("Axis_Final_Perfect.pdf")
-        with open("Axis_Final_Perfect.pdf", "rb") as f:
+        pdf.output("Axis_Final_Statement.pdf")
+        with open("Axis_Final_Statement.pdf", "rb") as f:
             st.download_button("Download Now", f, file_name="Axis_Official_Statement.pdf")
