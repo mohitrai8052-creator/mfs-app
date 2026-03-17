@@ -7,24 +7,25 @@ import random
 from datetime import datetime, timedelta
 import io
 
+# --- 6 Month Professional Data ---
 def generate_sbi_data(op_bal, sal_text):
     data = []
     curr_bal = op_bal
-    curr_date = datetime(2025, 10, 6, 10, 0)
+    current_date = datetime(2025, 10, 6, 10, 0)
     end_date = datetime(2025, 4, 7, 9, 0)
-    while curr_date >= end_date:
-        d_str = curr_date.strftime("%d %b %Y")
-        if curr_date.day in [5, 6, 7] and random.random() > 0.8:
+    while current_date >= end_date:
+        d_str = current_date.strftime("%d %b %Y")
+        if current_date.day in [5, 6, 7] and random.random() > 0.8:
             desc, dep, wit = sal_text, 80000.0, 0.0
         else:
             ref = str(random.randint(100000000000, 999999999999))
             desc, dep, wit = f"TRANSFER-UPI/DR/{ref}/PAYTM", 0.0, random.uniform(100, 5000)
         curr_bal = curr_bal + dep - wit
         data.append({"d": d_str, "desc": desc, "wit": wit, "dep": dep, "bal": curr_bal})
-        curr_date -= timedelta(hours=random.randint(15, 45))
+        current_date -= timedelta(hours=random.randint(15, 45))
     return data
 
-st.title("🏦 SBI Original Property Fix (Final)")
+st.title("🏦 SBI Original Property Override")
 
 # Inputs
 c1, c2 = st.columns(2)
@@ -38,12 +39,12 @@ with c2:
     cif = st.text_input("CIF", "85774527603")
     op_bal = st.number_input("Opening Bal (7 Apr)", value=42.37)
 
-if st.button("🚀 Step 1: Fix All Data"):
-    st.session_state.final_v10 = generate_sbi_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
-    st.success("Data Ready! Proceed to Step 2.")
+if st.button("🚀 Process Original Layout"):
+    st.session_state.final_v11 = generate_sbi_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
+    st.success("Data Ready! Properties being fixed...")
 
-if "final_v10" in st.session_state:
-    if st.button("📥 Step 2: Download PDF (Verify iText)"):
+if "final_v11" in st.session_state:
+    if st.button("📥 Download PDF (Check Properties)"):
         temp_buf = io.BytesIO()
         c = canvas.Canvas(temp_buf, pagesize=A4)
         c.setPDFVersion(1, 4)
@@ -74,7 +75,7 @@ if "final_v10" in st.session_state:
 
         y = draw_template(c)
         c.setFont("Courier", 7)
-        for row in st.session_state.final_v10:
+        for row in st.session_state.final_v11:
             c.drawString(20*mm, y, row['d'])
             c.drawString(42*mm, y, row['d'])
             c.drawString(68*mm, y, row['desc'][:58])
@@ -88,37 +89,28 @@ if "final_v10" in st.session_state:
                 c.setFont("Courier", 7)
         c.save()
 
-        # --- PYPDF METADATA OVERWRITE ---
+        # --- PYPDF DEEP OVERWRITE ---
         temp_buf.seek(0)
         reader = PdfReader(temp_buf)
         writer = PdfWriter()
-        
-        # Copy pages
         for page in reader.pages:
             writer.add_page(page)
 
-        # Clear and rewrite ALL metadata
+        # Force clear original info object
         writer.add_metadata({
             "/Producer": "iText 2.1.7 by 1T3XT",
             "/Creator": "iText 2.1.7 by 1T3XT",
             "/Author": "State Bank of India",
-            "/Title": "Account Statement",
-            "/CreationDate": "D:20251006120000",
-            "/ModDate": "D:20251006120000"
+            "/Title": "Account Statement"
         })
 
         final_buf = io.BytesIO()
         writer.write(final_buf)
         
-        # --- FINAL BYTE-LEVEL CHECK ---
-        final_pdf_data = final_buf.getvalue()
-        # Remove any lingering ReportLab tags in the final stream
-        final_pdf_data = final_pdf_data.replace(b"ReportLab", b"iText")
-        
-        st.download_button("📥 Download Official v1.4 PDF", final_pdf_data, "SBI_Statement.pdf")
+        # --- FINAL BYTE REPLACEMENT (Sabse Solid Rasta) ---
+        pdf_bytes = final_buf.getvalue()
+        # Hum PDF ke raw code se 'ReportLab' ko 'iText' se replace kar rahe hain
+        fixed_pdf_bytes = pdf_bytes.replace(b"ReportLab PDF Library", b"iText 2.1.7 by 1T3XT")
+        fixed_pdf_bytes = fixed_pdf_bytes.replace(b"ReportLab", b"iText")
 
-        # Final Output
-        final_buf = io.BytesIO()
-        writer.write(final_buf)
-        
-        st.download_button("📥 Download SBI-Verified PDF", final_buf.getvalue(), "SBI_Statement.pdf")
+        st.download_button("📥 Click for Original Verified PDF", fixed_pdf_bytes, "SBI_Statement.pdf")
