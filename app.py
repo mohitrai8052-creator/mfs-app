@@ -2,12 +2,13 @@ import streamlit as st
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
+from pypdf import PdfReader, PdfWriter
 import random
 from datetime import datetime, timedelta
 import io
-import re
 
-def generate_sbi_data(op_bal, sal_text):
+# 1. Data Generation (6 Months)
+def generate_sbi_master_data(op_bal, sal_text):
     data = []
     curr_bal = op_bal
     curr_date = datetime(2025, 10, 6, 10, 0)
@@ -24,9 +25,9 @@ def generate_sbi_data(op_bal, sal_text):
         curr_date -= timedelta(hours=random.randint(15, 45))
     return data
 
-st.title("🏦 SBI Original Property - Deep Fix")
+st.title("🏦 SBI Original Property - Bypass Version")
 
-# Inputs
+# User Inputs
 c1, c2 = st.columns(2)
 with c1:
     name = st.text_input("Name", "Mr. ASHISH TIWARI")
@@ -38,21 +39,17 @@ with c2:
     cif = st.text_input("CIF", "85774527603")
     op_bal = st.number_input("Opening Bal (7 Apr)", value=42.37)
 
-if st.button("🚀 Prepare 6-Month Data"):
-    st.session_state.final_6m = generate_sbi_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
-    st.success("Data Ready. Ready for Deep Property Fix.")
+if st.button("🚀 Step 1: Fix All Data"):
+    st.session_state.final_v_bypass = generate_sbi_master_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
+    st.success("Data Ready! Properties will be overwritten now.")
 
-if "final_6m" in st.session_state:
-    if st.button("📥 Download PDF (The Final Fix)"):
-        buf = io.BytesIO()
-        c = canvas.Canvas(buf, pagesize=A4)
+if "final_v_bypass" in st.session_state:
+    if st.button("📥 Step 2: Download Verified iText PDF"):
+        # Create PDF with ReportLab
+        temp_buf = io.BytesIO()
+        c = canvas.Canvas(temp_buf, pagesize=A4)
         c.setPDFVersion(1, 4)
         
-        # Inital metadata
-        c.setAuthor("State Bank of India")
-        c.setCreator("iText 2.1.7 by 1T3XT")
-        c.setProducer("iText 2.1.7 by 1T3XT")
-
         def draw_template(can):
             can.setFont("Helvetica-Bold", 16)
             can.drawString(20*mm, 282*mm, "SBI")
@@ -68,9 +65,9 @@ if "final_6m" in st.session_state:
             can.setLineWidth(0.1)
             can.line(18*mm, 227*mm, 195*mm, 227*mm)
             can.setFont("Courier-Bold", 7.5)
-            can.drawString(20*mm, 223*mm, "Txn Date")
-            can.drawString(42*mm, 223*mm, "Value Date")
-            can.drawString(68*mm, 223*mm, "Description")
+            can.drawString(20*mm, 222*mm, "Txn Date")
+            can.drawString(42*mm, 222*mm, "Value Date")
+            can.drawString(68*mm, 222*mm, "Description")
             can.drawRightString(148*mm, 222*mm, "Debit")
             can.drawRightString(170*mm, 222*mm, "Credit")
             can.drawRightString(192*mm, 222*mm, "Balance")
@@ -79,7 +76,7 @@ if "final_6m" in st.session_state:
 
         y = draw_template(c)
         c.setFont("Courier", 7)
-        for row in st.session_state.final_6m:
+        for row in st.session_state.final_v_bypass:
             c.drawString(20*mm, y, row['d'])
             c.drawString(42*mm, y, row['d'])
             c.drawString(68*mm, y, row['desc'][:58])
@@ -93,14 +90,28 @@ if "final_6m" in st.session_state:
                 c.setFont("Courier", 7)
         c.save()
 
-        # --- DEEP BYTE-LEVEL REPLACEMENT ---
-        raw_pdf = buf.getvalue()
+        # --- PYPDF DEEP METADATA OVERWRITE ---
+        temp_buf.seek(0)
+        reader = PdfReader(temp_buf)
+        writer = PdfWriter()
         
-        # 1. Replace Producer string
-        raw_pdf = raw_pdf.replace(b"ReportLab PDF Library - www.reportlab.com", b"iText 2.1.7 by 1T3XT (BankMaster-v3)")
-        # 2. Replace Creator string
-        raw_pdf = raw_pdf.replace(b"ReportLab", b"iText")
-        # 3. Clean any other XML tags that might contain 'ReportLab'
-        cleaned_pdf = re.sub(b"ReportLab[^<]*", b"iText 2.1.7", raw_pdf)
+        for page in reader.pages:
+            writer.add_page(page)
 
-        st.download_button("📥 Download Verified Original PDF", cleaned_pdf, "SBI_Statement_Original.pdf")
+        # Force Set Everything
+        writer.add_metadata({
+            "/Author": "State Bank of India",
+            "/Producer": "iText 2.1.7 by 1T3XT",
+            "/Creator": "iText 2.1.7 by 1T3XT",
+            "/Title": "Account Statement",
+            "/CreationDate": "D:20251006113000Z"
+        })
+
+        final_buf = io.BytesIO()
+        writer.write(final_buf)
+        
+        # Binary Clean (Final Step)
+        raw_data = final_buf.getvalue()
+        raw_data = raw_data.replace(b"ReportLab", b"iText")
+        
+        st.download_button("📥 Get Original Properties PDF", raw_data, "SBI_Statement.pdf")
