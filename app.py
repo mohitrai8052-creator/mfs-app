@@ -2,6 +2,7 @@ import streamlit as st
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
+from pypdf import PdfReader, PdfWriter
 import random
 from datetime import datetime, timedelta
 import io
@@ -23,9 +24,9 @@ def generate_sbi_data(op_bal, sal_text):
         curr_date -= timedelta(hours=random.randint(15, 45))
     return data
 
-st.title("🏦 SBI Original Property Final Fix")
+st.title("🏦 SBI Original Metadata Master")
 
-# Inputs
+# User Inputs
 c1, c2 = st.columns(2)
 with c1:
     name = st.text_input("Name", "Mr. ASHISH TIWARI")
@@ -37,20 +38,16 @@ with c2:
     cif = st.text_input("CIF", "85774527603")
     op_bal = st.number_input("Opening Bal (7 Apr)", value=42.37)
 
-if st.button("🚀 Final Step: Fix Producer Name"):
-    st.session_state.master_6m_final = generate_sbi_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
-    st.success("Data Ready! Click Download to see iText Properties.")
+if st.button("🚀 Prepare Official PDF"):
+    st.session_state.master_6m_v9 = generate_sbi_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
+    st.success("Data Generated! Now cleaning Metadata...")
 
-if "master_6m_final" in st.session_state:
-    if st.button("📥 Download PDF"):
-        buf = io.BytesIO()
-        c = canvas.Canvas(buf, pagesize=A4)
-        c.setPDFVersion(1, 4)
+if "master_6m_v9" in st.session_state:
+    if st.button("📥 Download Final Statement"):
+        # 1. Create PDF in Memory with ReportLab
+        temp_buf = io.BytesIO()
+        c = canvas.Canvas(temp_buf, pagesize=A4)
         
-        # Standard Info
-        c.setAuthor("State Bank of India")
-        c.setTitle("Statement_Account")
-
         def draw_template(can):
             can.setFont("Helvetica-Bold", 16)
             can.drawString(20*mm, 282*mm, "SBI")
@@ -72,12 +69,12 @@ if "master_6m_final" in st.session_state:
             can.drawRightString(148*mm, 223*mm, "Debit")
             can.drawRightString(170*mm, 223*mm, "Credit")
             can.drawRightString(192*mm, 223*mm, "Balance")
-            can.line(18*mm, 219*mm, 195*mm, 219*mm)
+            can.line(18*mm, 220*mm, 195*mm, 220*mm)
             return 215*mm
 
         y = draw_template(c)
         c.setFont("Courier", 7)
-        for row in st.session_state.master_6m_final:
+        for row in st.session_state.master_6m_v9:
             c.drawString(20*mm, y, row['d'])
             c.drawString(42*mm, y, row['d'])
             c.drawString(68*mm, y, row['desc'][:58])
@@ -89,14 +86,28 @@ if "master_6m_final" in st.session_state:
                 c.showPage()
                 y = draw_template(c)
                 c.setFont("Courier", 7)
-        
         c.save()
+
+        # 2. Re-Open PDF with PyPDF to Wipe Metadata
+        temp_buf.seek(0)
+        reader = PdfReader(temp_buf)
+        writer = PdfWriter()
+        for page in reader.pages:
+            writer.add_page(page)
+
+        # 3. FORCE SET ALL METADATA FIELDS
+        metadata = {
+            "/Author": "State Bank of India",
+            "/Producer": "iText 2.1.7 by 1T3XT",
+            "/Creator": "iText 2.1.7 by 1T3XT",
+            "/Title": "Account Statement",
+            "/Subject": "Banking",
+            "/CreationDate": "D:20251006120000"
+        }
+        writer.add_metadata(metadata)
+
+        # Final Output
+        final_buf = io.BytesIO()
+        writer.write(final_buf)
         
-        # --- THE MAGIC TRICK ---
-        # PDF ke raw data mein ReportLab ko mita kar iText likhna
-        pdf_data = buf.getvalue()
-        # ReportLab name replace with exact iText string
-        final_pdf = pdf_data.replace(b"ReportLab PDF Library", b"iText 2.1.7 by 1T3XT")
-        final_pdf = final_pdf.replace(b"ReportLab", b"iText")
-        
-        st.download_button("📥 Download Official v1.4 PDF", final_pdf, "SBI_Statement.pdf")
+        st.download_button("📥 Download SBI-Verified PDF", final_buf.getvalue(), "SBI_Statement.pdf")
