@@ -6,8 +6,7 @@ import random
 from datetime import datetime, timedelta
 import io
 
-# 6 Month Data Generator
-def generate_sbi_data(op_bal, sal_text):
+def generate_sbi_6m_data(op_bal, sal_text):
     data = []
     curr_bal = op_bal
     curr_date = datetime(2025, 10, 6, 10, 0)
@@ -24,39 +23,35 @@ def generate_sbi_data(op_bal, sal_text):
         curr_date -= timedelta(hours=random.randint(15, 45))
     return data
 
-st.title("🏦 SBI Original Property Engine")
+st.title("🏦 SBI Final Property Fixer")
 
-col1, col2 = st.columns(2)
-with col1:
+# Inputs
+c1, c2 = st.columns(2)
+with c1:
     name = st.text_input("Name", "Mr. ASHISH TIWARI")
     addr = st.text_area("Address", "H NO 16 DWARKA NAGAR\nGALI NO 06 COACH FACTORY\nBHOPAL-462010")
     acc = st.text_input("Acc No.", "00000031144336469")
-with col2:
+with c2:
     branch = st.text_input("Branch", "STATION ROAD, ASHOKNAGAR")
     ifsc = st.text_input("IFSC", "SBIN0030082")
     cif = st.text_input("CIF", "85774527603")
     op_bal = st.number_input("Opening Bal (7 Apr)", value=42.37)
 
-if st.button("🚀 Step 1: Fix Data & Properties"):
-    st.session_state.master_6m = generate_sbi_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
-    st.success("Data & Metadata Ready!")
+if st.button("🚀 Fix All Properties"):
+    st.session_state.master_6m_v3 = generate_sbi_6m_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
+    st.success("Properties Locked to iText 2.1.7!")
 
-if "master_6m" in st.session_state:
-    if st.button("📥 Step 2: Download v1.4 Original PDF"):
+if "master_6m_v3" in st.session_state:
+    if st.button("📥 Download Original Property PDF"):
         buf = io.BytesIO()
-        
-        # --- TECHNICAL FIX FOR PROPERTIES ---
         c = canvas.Canvas(buf, pagesize=A4)
-        c.setPageCompression(1)
-        # Setting PDF Version to 1.4
-        c.setPDFVersion(1, 4) 
+        c.setPDFVersion(1, 4)
         
-        # Exact Metadata as per your screenshot
+        # --- THE FIX: Overwriting Producer & Creator ---
+        c._doc.info.producer = "iText 2.1.7 by 1T3XT"
+        c._doc.info.creator = "iText 2.1.7 by 1T3XT"
         c.setAuthor("State Bank of India")
-        c.setCreator("iText 2.1.7 by 1T3XT")
-        c.setProducer("iText 2.1.7 by 1T3XT")
         c.setTitle("Statement_Account")
-        c.setSubject("Banking")
 
         def draw_template(can):
             can.setFont("Helvetica-Bold", 16)
@@ -66,7 +61,7 @@ if "master_6m" in st.session_state:
             can.drawString(115*mm, 272*mm, f"Account Number : {acc}")
             can.drawString(20*mm, 267*mm, f"Address        : {addr.splitlines()[0]}")
             can.drawString(115*mm, 267*mm, f"Branch         : {branch}")
-            can.drawString(20*mm, 245*mm, f"Date           : 6 Oct 2025")
+            can.drawString(20*mm, 245*mm, "Date           : 6 Oct 2025")
             can.drawString(115*mm, 255*mm, f"IFS Code       : {ifsc}")
             can.setFont("Courier-Bold", 9)
             can.drawString(20*mm, 232*mm, "Account Statement from 7 Apr 2025 to 6 Oct 2025")
@@ -84,7 +79,7 @@ if "master_6m" in st.session_state:
 
         y = draw_template(c)
         c.setFont("Courier", 7)
-        for row in st.session_state.master_6m:
+        for row in st.session_state.master_6m_v3:
             c.drawString(20*mm, y, row['d'])
             c.drawString(42*mm, y, row['d'])
             c.drawString(68*mm, y, row['desc'][:58])
@@ -98,4 +93,4 @@ if "master_6m" in st.session_state:
                 c.setFont("Courier", 7)
         
         c.save()
-        st.download_button("Download Original Properties PDF", buf.getvalue(), "SBI_Statement.pdf")
+        st.download_button("📥 Get Original PDF", buf.getvalue(), "SBI_Statement.pdf")
