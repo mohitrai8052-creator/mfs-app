@@ -24,9 +24,9 @@ def generate_sbi_data(op_bal, sal_text):
         curr_date -= timedelta(hours=random.randint(15, 45))
     return data
 
-st.title("🏦 SBI Original Metadata Master")
+st.title("🏦 SBI Original Property Fix (Final)")
 
-# User Inputs
+# Inputs
 c1, c2 = st.columns(2)
 with c1:
     name = st.text_input("Name", "Mr. ASHISH TIWARI")
@@ -38,15 +38,15 @@ with c2:
     cif = st.text_input("CIF", "85774527603")
     op_bal = st.number_input("Opening Bal (7 Apr)", value=42.37)
 
-if st.button("🚀 Prepare Official PDF"):
-    st.session_state.master_6m_v9 = generate_sbi_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
-    st.success("Data Generated! Now cleaning Metadata...")
+if st.button("🚀 Step 1: Fix All Data"):
+    st.session_state.final_v10 = generate_sbi_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
+    st.success("Data Ready! Proceed to Step 2.")
 
-if "master_6m_v9" in st.session_state:
-    if st.button("📥 Download Final Statement"):
-        # 1. Create PDF in Memory with ReportLab
+if "final_v10" in st.session_state:
+    if st.button("📥 Step 2: Download PDF (Verify iText)"):
         temp_buf = io.BytesIO()
         c = canvas.Canvas(temp_buf, pagesize=A4)
+        c.setPDFVersion(1, 4)
         
         def draw_template(can):
             can.setFont("Helvetica-Bold", 16)
@@ -63,18 +63,18 @@ if "master_6m_v9" in st.session_state:
             can.setLineWidth(0.1)
             can.line(18*mm, 227*mm, 195*mm, 227*mm)
             can.setFont("Courier-Bold", 7.5)
-            can.drawString(20*mm, 223*mm, "Txn Date")
-            can.drawString(42*mm, 223*mm, "Value Date")
-            can.drawString(68*mm, 223*mm, "Description")
-            can.drawRightString(148*mm, 223*mm, "Debit")
-            can.drawRightString(170*mm, 223*mm, "Credit")
-            can.drawRightString(192*mm, 223*mm, "Balance")
-            can.line(18*mm, 220*mm, 195*mm, 220*mm)
+            can.drawString(20*mm, 222*mm, "Txn Date")
+            can.drawString(42*mm, 222*mm, "Value Date")
+            can.drawString(68*mm, 222*mm, "Description")
+            can.drawRightString(148*mm, 222*mm, "Debit")
+            can.drawRightString(170*mm, 222*mm, "Credit")
+            can.drawRightString(192*mm, 222*mm, "Balance")
+            can.line(18*mm, 219*mm, 195*mm, 219*mm)
             return 215*mm
 
         y = draw_template(c)
         c.setFont("Courier", 7)
-        for row in st.session_state.master_6m_v9:
+        for row in st.session_state.final_v10:
             c.drawString(20*mm, y, row['d'])
             c.drawString(42*mm, y, row['d'])
             c.drawString(68*mm, y, row['desc'][:58])
@@ -88,23 +88,34 @@ if "master_6m_v9" in st.session_state:
                 c.setFont("Courier", 7)
         c.save()
 
-        # 2. Re-Open PDF with PyPDF to Wipe Metadata
+        # --- PYPDF METADATA OVERWRITE ---
         temp_buf.seek(0)
         reader = PdfReader(temp_buf)
         writer = PdfWriter()
+        
+        # Copy pages
         for page in reader.pages:
             writer.add_page(page)
 
-        # 3. FORCE SET ALL METADATA FIELDS
-        metadata = {
-            "/Author": "State Bank of India",
+        # Clear and rewrite ALL metadata
+        writer.add_metadata({
             "/Producer": "iText 2.1.7 by 1T3XT",
             "/Creator": "iText 2.1.7 by 1T3XT",
+            "/Author": "State Bank of India",
             "/Title": "Account Statement",
-            "/Subject": "Banking",
-            "/CreationDate": "D:20251006120000"
-        }
-        writer.add_metadata(metadata)
+            "/CreationDate": "D:20251006120000",
+            "/ModDate": "D:20251006120000"
+        })
+
+        final_buf = io.BytesIO()
+        writer.write(final_buf)
+        
+        # --- FINAL BYTE-LEVEL CHECK ---
+        final_pdf_data = final_buf.getvalue()
+        # Remove any lingering ReportLab tags in the final stream
+        final_pdf_data = final_pdf_data.replace(b"ReportLab", b"iText")
+        
+        st.download_button("📥 Download Official v1.4 PDF", final_pdf_data, "SBI_Statement.pdf")
 
         # Final Output
         final_buf = io.BytesIO()
