@@ -1,14 +1,17 @@
 import streamlit as st
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import mm
-from pypdf import PdfReader, PdfWriter
+from fpdf import FPDF
 import random
 from datetime import datetime, timedelta
 import io
 
-# 1. Data Generation (6 Months)
-def generate_sbi_master_data(op_bal, sal_text):
+# Custom PDF Class to handle Metadata
+class SBI_PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 16)
+        self.cell(0, 10, 'SBI', 0, 1, 'L')
+        self.ln(5)
+
+def generate_sbi_data(op_bal, sal_text):
     data = []
     curr_bal = op_bal
     curr_date = datetime(2025, 10, 6, 10, 0)
@@ -25,86 +28,72 @@ def generate_sbi_master_data(op_bal, sal_text):
         curr_date -= timedelta(hours=random.randint(15, 45))
     return data
 
-st.title("🏦 SBI Original Property - Bypass Version")
+st.title("🏦 SBI Final Master (fpdf version)")
 
-# User Inputs
-c1, c2 = st.columns(2)
-with c1:
-    name = st.text_input("Name", "Mr. ASHISH TIWARI")
-    addr = st.text_area("Address", "H NO 16 DWARKA NAGAR\nGALI NO 06 COACH FACTORY\nBHOPAL-462010")
-    acc = st.text_input("Acc No.", "00000031144336469")
-with c2:
-    branch = st.text_input("Branch", "STATION ROAD, ASHOKNAGAR")
-    ifsc = st.text_input("IFSC", "SBIN0030082")
-    cif = st.text_input("CIF", "85774527603")
-    op_bal = st.number_input("Opening Bal (7 Apr)", value=42.37)
+# Inputs
+name = st.text_input("Name", "Mr. ASHISH TIWARI")
+acc = st.text_input("Acc No.", "00000031144336469")
+op_bal = st.number_input("Opening Bal (7 Apr)", value=42.37)
 
-if st.button("🚀 Step 1: Fix All Data"):
-    st.session_state.final_v_bypass = generate_sbi_master_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
-    st.success("Data Ready! Properties will be overwritten now.")
+if st.button("🚀 Step 1: Fix Data"):
+    st.session_state.master_data = generate_sbi_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
+    st.success("Data ready for fpdf engine!")
 
-if "final_v_bypass" in st.session_state:
-    if st.button("📥 Step 2: Download Verified iText PDF"):
-        # Create PDF with ReportLab
-        temp_buf = io.BytesIO()
-        c = canvas.Canvas(temp_buf, pagesize=A4)
-        c.setPDFVersion(1, 4)
+if "master_data" in st.session_state:
+    if st.button("📥 Step 2: Download v1.4 Original PDF"):
+        pdf = SBI_PDF()
         
-        def draw_template(can):
-            can.setFont("Helvetica-Bold", 16)
-            can.drawString(20*mm, 282*mm, "SBI")
-            can.setFont("Courier", 8.2)
-            can.drawString(20*mm, 272*mm, f"Account Name   : {name}")
-            can.drawString(115*mm, 272*mm, f"Account Number : {acc}")
-            can.drawString(20*mm, 267*mm, f"Address        : {addr.splitlines()[0]}")
-            can.drawString(115*mm, 267*mm, f"Branch         : {branch}")
-            can.drawString(20*mm, 245*mm, "Date           : 6 Oct 2025")
-            can.drawString(115*mm, 255*mm, f"IFS Code       : {ifsc}")
-            can.setFont("Courier-Bold", 9)
-            can.drawString(20*mm, 232*mm, "Account Statement from 7 Apr 2025 to 6 Oct 2025")
-            can.setLineWidth(0.1)
-            can.line(18*mm, 227*mm, 195*mm, 227*mm)
-            can.setFont("Courier-Bold", 7.5)
-            can.drawString(20*mm, 222*mm, "Txn Date")
-            can.drawString(42*mm, 222*mm, "Value Date")
-            can.drawString(68*mm, 222*mm, "Description")
-            can.drawRightString(148*mm, 222*mm, "Debit")
-            can.drawRightString(170*mm, 222*mm, "Credit")
-            can.drawRightString(192*mm, 222*mm, "Balance")
-            can.line(18*mm, 219*mm, 195*mm, 219*mm)
-            return 215*mm
-
-        y = draw_template(c)
-        c.setFont("Courier", 7)
-        for row in st.session_state.final_v_bypass:
-            c.drawString(20*mm, y, row['d'])
-            c.drawString(42*mm, y, row['d'])
-            c.drawString(68*mm, y, row['desc'][:58])
-            if row['wit'] > 0: c.drawRightString(148*mm, y, f"{row['wit']:,.2f}")
-            if row['dep'] > 0: c.drawRightString(170*mm, y, f"{row['dep']:,.2f}")
-            c.drawRightString(192*mm, y, f"{row['bal']:,.2f}")
-            y -= 4.2*mm
-            if y < 20*mm:
-                c.showPage()
-                y = draw_template(c)
-                c.setFont("Courier", 7)
-        c.save()
-
-        # --- PYPDF DEEP METADATA OVERWRITE ---
-        temp_buf.seek(0)
-        reader = PdfReader(temp_buf)
-        writer = PdfWriter()
+        # --- THE FIX: Set Metadata BEFORE adding page ---
+        pdf.set_author("State Bank of India")
+        pdf.set_creator("iText 2.1.7 by 1T3XT")
+        pdf.set_title("Statement_Account")
+        # Producer is set via a hack in the final output string
         
-        for page in reader.pages:
-            writer.add_page(page)
+        pdf.add_page()
+        pdf.set_font("Courier", size=8)
+        
+        # Header Info
+        pdf.cell(0, 5, f"Account Name   : {name}", 0, 1)
+        pdf.cell(0, 5, f"Account Number : {acc}", 0, 1)
+        pdf.ln(10)
+        
+        # Table Header
+        pdf.set_font("Courier", 'B', 8)
+        pdf.cell(30, 8, "Txn Date", 1)
+        pdf.cell(80, 8, "Description", 1)
+        pdf.cell(25, 8, "Debit", 1)
+        pdf.cell(25, 8, "Credit", 1)
+        pdf.cell(30, 8, "Balance", 1)
+        pdf.ln()
+        
+        # Data Rows
+        pdf.set_font("Courier", size=7)
+        for row in st.session_state.master_data:
+            pdf.cell(30, 6, row['d'], 1)
+            pdf.cell(80, 6, row['desc'][:45], 1)
+            pdf.cell(25, 6, f"{row['wit']:.2f}" if row['wit'] > 0 else "", 1)
+            pdf.cell(25, 6, f"{row['dep']:.2f}" if row['dep'] > 0 else "", 1)
+            pdf.cell(30, 6, f"{row['bal']:.2f}", 1)
+            pdf.ln()
+            
+        # Get PDF String
+        pdf_output = pdf.output(dest='S')
+        
+        # Binary Hack for Producer (fpdf doesn't have a direct method)
+        if isinstance(pdf_output, str):
+            pdf_bytes = pdf_output.encode('latin1')
+        else:
+            pdf_bytes = pdf_output
+            
+        # Manually Inject Producer into the PDF structure
+        if b"/Producer" in pdf_bytes:
+            # Replace default producer
+            final_pdf = pdf_bytes.replace(b"/Producer (FPDF 1.7)", b"/Producer (iText 2.1.7 by 1T3XT)")
+        else:
+            # Add it if missing
+            final_pdf = pdf_bytes.replace(b"/Author", b"/Producer (iText 2.1.7 by 1T3XT) /Author")
 
-        # Force Set Everything
-        writer.add_metadata({
-            "/Author": "State Bank of India",
-            "/Producer": "iText 2.1.7 by 1T3XT",
-            "/Creator": "iText 2.1.7 by 1T3XT",
-            "/Title": "Account Statement",
-            "/CreationDate": "D:20251006113000Z"
+        st.download_button("📥 Click for Verified PDF", final_pdf, "SBI_Statement.pdf")
         })
 
         final_buf = io.BytesIO()
