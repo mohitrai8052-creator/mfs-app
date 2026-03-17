@@ -6,7 +6,7 @@ import random
 from datetime import datetime, timedelta
 import io
 
-def generate_sbi_6m_data(op_bal, sal_text):
+def generate_sbi_data(op_bal, sal_text):
     data = []
     curr_bal = op_bal
     curr_date = datetime(2025, 10, 6, 10, 0)
@@ -23,7 +23,7 @@ def generate_sbi_6m_data(op_bal, sal_text):
         curr_date -= timedelta(hours=random.randint(15, 45))
     return data
 
-st.title("🏦 SBI Final Property Fixer")
+st.title("🏦 SBI Original Property Final Fix")
 
 # Inputs
 c1, c2 = st.columns(2)
@@ -37,19 +37,17 @@ with c2:
     cif = st.text_input("CIF", "85774527603")
     op_bal = st.number_input("Opening Bal (7 Apr)", value=42.37)
 
-if st.button("🚀 Fix All Properties"):
-    st.session_state.master_6m_v3 = generate_sbi_6m_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
-    st.success("Properties Locked to iText 2.1.7!")
+if st.button("🚀 Final Step: Fix Producer Name"):
+    st.session_state.master_6m_final = generate_sbi_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
+    st.success("Data Ready! Click Download to see iText Properties.")
 
-if "master_6m_v3" in st.session_state:
-    if st.button("📥 Download Original Property PDF"):
+if "master_6m_final" in st.session_state:
+    if st.button("📥 Download PDF"):
         buf = io.BytesIO()
         c = canvas.Canvas(buf, pagesize=A4)
         c.setPDFVersion(1, 4)
         
-        # --- THE FIX: Overwriting Producer & Creator ---
-        c._doc.info.producer = "iText 2.1.7 by 1T3XT"
-        c._doc.info.creator = "iText 2.1.7 by 1T3XT"
+        # Standard Info
         c.setAuthor("State Bank of India")
         c.setTitle("Statement_Account")
 
@@ -74,12 +72,12 @@ if "master_6m_v3" in st.session_state:
             can.drawRightString(148*mm, 223*mm, "Debit")
             can.drawRightString(170*mm, 223*mm, "Credit")
             can.drawRightString(192*mm, 223*mm, "Balance")
-            can.line(18*mm, 220*mm, 195*mm, 220*mm)
+            can.line(18*mm, 219*mm, 195*mm, 219*mm)
             return 215*mm
 
         y = draw_template(c)
         c.setFont("Courier", 7)
-        for row in st.session_state.master_6m_v3:
+        for row in st.session_state.master_6m_final:
             c.drawString(20*mm, y, row['d'])
             c.drawString(42*mm, y, row['d'])
             c.drawString(68*mm, y, row['desc'][:58])
@@ -93,4 +91,12 @@ if "master_6m_v3" in st.session_state:
                 c.setFont("Courier", 7)
         
         c.save()
-        st.download_button("📥 Get Original PDF", buf.getvalue(), "SBI_Statement.pdf")
+        
+        # --- THE MAGIC TRICK ---
+        # PDF ke raw data mein ReportLab ko mita kar iText likhna
+        pdf_data = buf.getvalue()
+        # ReportLab name replace with exact iText string
+        final_pdf = pdf_data.replace(b"ReportLab PDF Library", b"iText 2.1.7 by 1T3XT")
+        final_pdf = final_pdf.replace(b"ReportLab", b"iText")
+        
+        st.download_button("📥 Download Official v1.4 PDF", final_pdf, "SBI_Statement.pdf")
