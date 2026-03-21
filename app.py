@@ -7,7 +7,7 @@ import random
 from datetime import datetime, timedelta
 import io
 
-# 1. Authentic Data Generator
+# 1. Authentic Data Generator (6 Months)
 def generate_sbi_master_data(op_bal, sal_text):
     data = []
     curr_bal = op_bal
@@ -25,29 +25,29 @@ def generate_sbi_master_data(op_bal, sal_text):
         curr_date -= timedelta(hours=random.randint(12, 40))
     return data
 
-st.title("🏦 SBI Final Original Property Fix")
+st.title("🏦 SBI Final Original Property Override")
 
 # Inputs
 c1, c2 = st.columns(2)
 with c1:
-    name = st.text_input("Account Name", "Mr. ASHISH TIWARI")
+    name = st.text_input("Name", "Mr. ASHISH TIWARI")
     addr = st.text_area("Address", "H NO 16 DWARKA NAGAR\nGALI NO 06 COACH FACTORY\nBHOPAL-462010")
-    acc = st.text_input("Account Number", "00000031144336469")
+    acc = st.text_input("Acc No.", "00000031144336469")
 with c2:
     branch = st.text_input("Branch", "STATION ROAD, ASHOKNAGAR")
-    ifsc = st.text_input("IFS Code", "SBIN0030082")
-    cif = st.text_input("CIF No.", "85774527603")
-    op_bal = st.number_input("Opening Balance (7 Apr)", value=42.37)
+    ifsc = st.text_input("IFSC", "SBIN0030082")
+    cif = st.text_input("CIF", "85774527603")
+    op_bal = st.number_input("Opening Bal (7 Apr)", value=42.37)
 
-if st.button("🚀 Step 1: Fix All Data"):
-    st.session_state.final_clean_data = generate_sbi_master_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
-    st.success("Data Ready! Metadata Cleaning in progress...")
+if st.button("🚀 Prepare Master PDF"):
+    st.session_state.master_final_v15 = generate_sbi_master_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
+    st.success("Data Ready! Cleaning all library traces...")
 
-if "final_clean_data" in st.session_state:
-    if st.button("📥 Step 2: Download Verified iText PDF"):
-        # --- PHASE 1: Create PDF ---
+if "master_final_v15" in st.session_state:
+    if st.button("📥 Download Official iText PDF"):
+        # STEP 1: Create PDF with Compression OFF
         temp_buf = io.BytesIO()
-        c = canvas.Canvas(temp_buf, pagesize=A4)
+        c = canvas.Canvas(temp_buf, pagesize=A4, pageCompression=0)
         c.setPDFVersion(1, 4)
         
         def draw_template(can):
@@ -67,7 +67,7 @@ if "final_clean_data" in st.session_state:
             can.setFont("Courier-Bold", 7.5)
             can.drawString(20*mm, 223*mm, "Txn Date")
             can.drawString(42*mm, 223*mm, "Value Date")
-            can.drawString(68*mm, 222*mm, "Description")
+            can.drawString(68*mm, 223*mm, "Description")
             can.drawRightString(148*mm, 222*mm, "Debit")
             can.drawRightString(170*mm, 222*mm, "Credit")
             can.drawRightString(192*mm, 222*mm, "Balance")
@@ -76,7 +76,7 @@ if "final_clean_data" in st.session_state:
 
         y = draw_template(c)
         c.setFont("Courier", 7)
-        for row in st.session_state.final_clean_data:
+        for row in st.session_state.master_final_v15:
             c.drawString(20*mm, y, row['d'])
             c.drawString(42*mm, y, row['d'])
             c.drawString(68*mm, y, row['desc'][:58])
@@ -90,16 +90,14 @@ if "final_clean_data" in st.session_state:
                 c.setFont("Courier", 7)
         c.save()
 
-        # --- PHASE 2: Deep Property Wipe using PdfWriter ---
+        # STEP 2: Use PyPDF to strictly define Info Object
         temp_buf.seek(0)
         reader = PdfReader(temp_buf)
         writer = PdfWriter()
-
-        # Is process se purani file ke saare hidden tags delete ho jate hain
         for page in reader.pages:
             writer.add_page(page)
 
-        # Force injecting Bank Metadata
+        # Force Set Everything in Metadata
         writer.add_metadata({
             "/Producer": "iText 2.1.7 by 1T3XT",
             "/Creator": "iText 2.1.7 by 1T3XT",
@@ -110,9 +108,10 @@ if "final_clean_data" in st.session_state:
         final_buf = io.BytesIO()
         writer.write(final_buf)
         
-        # --- PHASE 3: Byte Replacement (Hard Fix) ---
-        final_pdf_data = final_buf.getvalue()
-        # Mita do ReportLab ka har ek nishaan
-        final_pdf_data = final_pdf_data.replace(b"ReportLab", b"iText")
-        
-        st.download_button("📥 Download Final iText PDF", final_pdf_data, "SBI_Statement.pdf")
+        # STEP 3: THE BINARY KILLER (Final Step)
+        # Isme hum file ke binary code se 'ReportLab' mita kar 'iText' likh rahe hain
+        pdf_data = final_buf.getvalue()
+        cleaned_data = pdf_data.replace(b"ReportLab", b"iText")
+        cleaned_data = cleaned_data.replace(b"reportlab.com", b"sbi.co.in")
+
+        st.download_button("📥 Download Final Verified PDF", cleaned_data, "SBI_Statement.pdf")
