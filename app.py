@@ -2,7 +2,6 @@ import streamlit as st
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
-from pypdf import PdfReader, PdfWriter
 import random
 from datetime import datetime, timedelta
 import io
@@ -11,6 +10,7 @@ import io
 def get_kotak_6m_data(op_bal):
     data = []
     curr_bal = op_bal
+    # Current Date se piche 6 mahine
     curr_date = datetime(2026, 3, 18)
     end_date = datetime(2025, 9, 18)
     
@@ -18,7 +18,8 @@ def get_kotak_6m_data(op_bal):
         d_str = curr_date.strftime("%d %b %Y")
         ref_no = f"UPI-{random.randint(600000000000, 699999999999)}"
         
-        if curr_date.day in [1, 2, 3] and random.random() > 0.7:
+        # Monthly Salary Logic
+        if curr_date.day in [1, 2, 3, 4, 5] and random.random() > 0.8:
             desc = "CMS-SALARY/TATA MOTORS LTD"
             dep, wit = 75000.0, 0.0
         else:
@@ -27,28 +28,28 @@ def get_kotak_6m_data(op_bal):
             
         curr_bal = curr_bal + dep - wit
         data.append({"d": d_str, "desc": desc, "ref": ref_no, "wit": wit, "dep": dep, "bal": curr_bal})
-        curr_date -= timedelta(hours=random.randint(15, 45))
+        curr_date -= timedelta(hours=random.randint(18, 48))
     return data
 
-st.title("🏦 Kotak Original Properties - Atomic Fix")
+st.title("🏦 Kotak Bank Original Properties Fixer")
 
 # Inputs
 name = st.text_input("Customer Name", "Girase Vinod Rajusing")
 acc_no = st.text_input("Account No.", "9748659761")
-op_bal = st.number_input("Opening Balance", value=201.87)
+op_bal = st.number_input("Opening Balance (as on 18 Sep 2025)", value=201.87)
 
-if st.button("🚀 Step 1: Prepare 6-Month Data"):
-    st.session_state.kotak_final_data = get_kotak_6m_data(op_bal)
-    st.success("Data Generated! Ready for Metadata Surgery.")
+if st.button("🚀 Step 1: Fix All Data"):
+    st.session_state.kotak_master_data = get_kotak_6m_data(op_bal)
+    st.success("Data Ready! Now applying OpenPDF 2.0.3 Surgery...")
 
-if "kotak_final_data" in st.session_state:
+if "kotak_master_data" in st.session_state:
     if st.button("📥 Step 2: Download Verified PDF"):
-        # A. Create PDF with Compression OFF
-        temp_buf = io.BytesIO()
-        c = canvas.Canvas(temp_buf, pagesize=A4, pageCompression=0)
-        c.setPDFVersion(1, 5) # Matches Kotak's 1.5 Version
+        buf = io.BytesIO()
+        # Compression=0 is mandatory to keep the binary text readable for replacement
+        c = canvas.Canvas(buf, pagesize=A4, pageCompression=0)
+        c.setPDFVersion(1, 5) # Kotak standard
 
-        def draw_header(can):
+        def draw_kotak_header(can):
             can.setFont("Helvetica-Bold", 14)
             can.drawString(20*mm, 280*mm, "kotak")
             can.setFont("Helvetica", 8)
@@ -57,45 +58,30 @@ if "kotak_final_data" in st.session_state:
             can.line(15*mm, 240*mm, 195*mm, 240*mm)
             return 230*mm
 
-        y = draw_header(c)
+        y = draw_kotak_header(c)
         c.setFont("Helvetica", 7)
-        for i, row in enumerate(st.session_state.kotak_final_data, 1):
+        for row in st.session_state.kotak_master_data:
             c.drawString(20*mm, y, row['d'])
-            c.drawString(45*mm, y, row['desc'][:45])
+            c.drawString(45*mm, y, row['desc'][:50])
             if row['wit'] > 0: c.drawRightString(145*mm, y, f"{row['wit']:,.2f}")
             if row['dep'] > 0: c.drawRightString(170*mm, y, f"{row['dep']:,.2f}")
             c.drawRightString(192*mm, y, f"{row['bal']:,.2f}")
             y -= 6*mm
             if y < 25*mm:
                 c.showPage()
-                y = draw_header(c)
+                y = draw_kotak_header(c)
                 c.setFont("Helvetica", 7)
         c.save()
 
-        # B. METADATA SURGERY (The Fix)
-        temp_buf.seek(0)
-        reader = PdfReader(temp_buf)
-        writer = PdfWriter()
+        # --- THE MASTER BINARY FIX ---
+        raw_pdf_bytes = buf.getvalue()
         
-        # Copy pages to a new writer (This drops ReportLab's hidden info block)
-        for page in reader.pages:
-            writer.add_page(page)
-
-        # Force Injecting Kotak's Original Metadata
-        writer.add_metadata({
-            "/Producer": "OpenPDF 2.0.3",
-            "/Creator": "OpenPDF 2.0.3",
-            "/Author": "Kotak Mahindra Bank",
-            "/Title": "Account Statement",
-            "/CreationDate": "D:20260319115346Z"
-        })
-
-        final_buf = io.BytesIO()
-        writer.write(final_buf)
+        # 1. Producer & Creator Fix
+        raw_pdf_bytes = raw_pdf_bytes.replace(b"ReportLab PDF Library - www.reportlab.com", b"OpenPDF 2.0.3")
+        raw_pdf_bytes = raw_pdf_bytes.replace(b"ReportLab", b"OpenPDF")
+        raw_pdf_bytes = raw_pdf_bytes.replace(b"reportlab.com", b"kotak.com")
         
-        # C. Final Byte-Level Scrubbing
-        final_pdf_data = final_buf.getvalue()
-        # Mita do ReportLab ka har ek nishaan binary se
-        final_pdf_data = final_pdf_data.replace(b"ReportLab", b"OpenPDF")
+        # 2. XMP Metadata Block Fix (Forcefully hiding library name)
+        raw_pdf_bytes = raw_pdf_bytes.replace(b"<pdf:Producer>iText", b"<pdf:Producer>OpenPDF 2.0.3")
         
-        st.download_button("📥 Get Verified Kotak PDF", final_pdf_data, "Kotak_Statement.pdf")
+        st.download_button("📥 Download Property-Locked PDF", raw_pdf_bytes, "Kotak_Statement.pdf")
