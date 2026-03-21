@@ -1,99 +1,89 @@
 import streamlit as st
-from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
-from pdfrw import PdfReader, PdfWriter, PageMerge
-import io
+from pypdf import PdfReader, PdfWriter
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
+import io
 
-# --- 1. Authentic Kotak Data Generator (With Tata Motors Salary) ---
-def get_kotak_salary_data(op_bal):
+# --- 1. Data Generator ---
+def get_kotak_clean_data(op_bal):
     data = []
     curr_bal = op_bal
-    # 1 Feb 2026 se 18 Mar 2026 tak ka loop (Aapki file ke dates)
-    curr_date = datetime(2026, 3, 18)
-    end_date = datetime(2026, 2, 1)
-    
-    count = 1
-    while curr_date >= end_date:
-        d_str = curr_date.strftime("%d %b %Y")
+    # 6 Month Loop
+    for i in range(1, 120):
+        date = (datetime(2026, 3, 18) - (i * timedelta(hours=random.randint(10, 30)))).strftime("%d %b %Y")
         ref = f"UPI-{random.randint(600000000000, 699999999999)}"
-        
-        # Salary Entry (Har mahine ki 1st ya 2nd date ko)
-        if curr_date.day in [1, 2]:
-            desc = "CMS-SALARY/TATA MOTORS LTD/FEB26"
-            dep, wit = 85000.0, 0.0
+        if random.random() > 0.8:
+            desc, dep, wit = "CMS-SALARY/TATA MOTORS", 75000.0, 0.0
         else:
-            # Random UPI spends
-            desc = f"UPI/PAYMENT TO MERCHANT/{random.randint(100, 999)}/Purchase"
-            dep, wit = 0.0, random.uniform(50, 2500)
-            
+            desc, dep, wit = "UPI/PURCHASE/MERCHANT", 0.0, random.uniform(10, 2000)
         curr_bal = curr_bal + dep - wit
-        data.append({
-            "#": count, 
-            "date": d_str, 
-            "desc": desc, 
-            "ref": ref, 
-            "wit": wit, 
-            "dep": dep, 
-            "bal": curr_bal
-        })
-        curr_date -= timedelta(hours=random.randint(18, 48))
-        count += 1
-    return data[::-1] # Seedha (Chronological) order mein karne ke liye
+        data.append({"#": i, "d": date, "desc": desc, "ref": ref, "wit": wit, "dep": dep, "bal": curr_bal})
+    return data
 
-st.title("🏦 Kotak Mahindra - Property Lock Engine")
+st.title("🏦 Kotak Original Properties Fixer")
 
-# 1. Original File Upload
-uploaded_file = st.file_uploader("Upload Original Kotak PDF (Metadata ke liye)", type="pdf")
+# Inputs
+name = st.text_input("Name", "Girase Vinod Rajusing")
+acc = st.text_input("Account No.", "9748659761")
+op_bal = st.number_input("Opening Balance", value=201.87)
 
-if uploaded_file:
-    st.success("Original OpenPDF Metadata Locked!")
-    
-    if st.button("🚀 Generate Salary Statement"):
-        transactions = get_kotak_salary_data(201.87)
-        
-        # 2. Transparent Layer banayein data ke liye
-        overlay_buf = io.BytesIO()
-        c = canvas.Canvas(overlay_buf, pagesize=A4)
-        c.setFont("Helvetica", 7) # Kotak standard font size
-        
-        # Original layout ke coordinates jahan 'Opening Balance' ke baad entries shuru hoti hain
-        y = 175*mm 
-        for row in transactions:
-            # Columns alignment as per Kotak format
-            c.drawString(17*mm, y, str(row['#']))
-            c.drawString(25*mm, y, row['date'])
-            c.drawString(48*mm, y, row['desc'][:40]) # Description
-            c.drawString(108*mm, y, row['ref']) # Ref No.
-            
-            if row['wit'] > 0:
-                c.drawRightString(145*mm, y, f"{row['wit']:,.2f}")
-            if row['dep'] > 0:
-                c.drawRightString(170*mm, y, f"{row['dep']:,.2f}")
-                
+if st.button("🚀 Step 1: Fix All Data"):
+    st.session_state.kotak_final = get_kotak_clean_data(op_bal)
+    st.success("Data Ready! Now applying OpenPDF 2.0.3 Properties.")
+
+if "kotak_final" in st.session_state:
+    if st.button("📥 Step 2: Download Verified PDF"):
+        # Create PDF with NO COMPRESSION
+        temp_buf = io.BytesIO()
+        c = canvas.Canvas(temp_buf, pagesize=A4, pageCompression=0)
+        c.setPDFVersion(1, 5) # Matches your metadata screenshot
+
+        def header(can):
+            can.setFont("Helvetica-Bold", 14)
+            can.drawString(20*mm, 280*mm, "kotak")
+            can.setFont("Helvetica", 8)
+            can.drawString(20*mm, 270*mm, f"Account No: {acc}")
+            can.drawString(20*mm, 260*mm, f"Customer Name: {name}")
+            return 240*mm
+
+        y = header(c)
+        c.setFont("Helvetica", 7)
+        for row in st.session_state.kotak_final:
+            c.drawString(17*mm, y, str(row["#"]))
+            c.drawString(25*mm, y, row["d"])
+            c.drawString(50*mm, y, row["desc"])
             c.drawRightString(192*mm, y, f"{row['bal']:,.2f}")
-            y -= 6.1*mm # Row height adjustment
-            
-            if y < 30*mm: # Page break logic agar entries zyada hain
+            y -= 6*mm
+            if y < 30*mm:
                 c.showPage()
-                y = 250*mm
-                c.setFont("Helvetica", 7)
-            
+                y = header(c)
         c.save()
-        overlay_buf.seek(0)
-        
-        # 3. Merge Overlay with Original
-        base_pdf = PdfReader(uploaded_file)
-        overlay_pdf = PdfReader(overlay_buf)
-        
-        # Pehle page par data chhapna
-        PageMerge(base_pdf.pages[0]).add(overlay_pdf.pages[0]).render()
-        
-        # 4. Save Final PDF (Properties are preserved)
-        final_buf = io.BytesIO()
+
+        # --- THE ULTIMATE SURGERY ---
+        temp_buf.seek(0)
+        reader = PdfReader(temp_buf)
         writer = PdfWriter()
-        writer.write(final_buf, base_pdf)
         
-        st.download_button("📥 Download Final Kotak Statement", final_buf.getvalue(), "Kotak_Statement_Final.pdf")
+        # Freshly add pages to a new writer (This drops ReportLab's hidden tags)
+        for page in reader.pages:
+            writer.add_page(page)
+
+        # Force Injecting Kotak's Original Metadata
+        writer.add_metadata({
+            "/Producer": "OpenPDF 2.0.3",
+            "/Creator": "OpenPDF 2.0.3",
+            "/Author": "Kotak Mahindra Bank",
+            "/Title": "Account Statement",
+            "/CreationDate": "D:20260319115346Z" # Exact date from your metadata
+        })
+
+        final_buf = io.BytesIO()
+        writer.write(final_buf)
+        
+        # Last Byte Scrubbing
+        final_data = final_buf.getvalue().replace(b"ReportLab", b"OpenPDF")
+        
+        st.download_button("📥 Get Official Kotak PDF", final_data, "Kotak_Statement.pdf")
