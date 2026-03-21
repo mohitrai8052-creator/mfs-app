@@ -33,16 +33,16 @@ op_bal = st.number_input("Opening Balance (7 Apr)", value=42.37)
 
 if st.button("🚀 Step 1: Generate Data"):
     st.session_state.final_v16 = generate_sbi_master_data(op_bal, "BY TRANSFER-UPI/CR/TATA MOTORS LTD/SALARY")
-    st.success("Data ready! Now cleaning properties...")
+    st.success("Data ready! Now performing Deep Cleaning...")
 
 if "final_v16" in st.session_state:
     if st.button("📥 Step 2: Download Verified PDF"):
-        # Create PDF with Compression OFF (Taki bytes replace ho sakein)
+        # Compression OFF is mandatory for byte replacement
         temp_buf = io.BytesIO()
         c = canvas.Canvas(temp_buf, pagesize=A4, pageCompression=0)
         c.setPDFVersion(1, 4)
         
-        # Injected Metadata
+        # Meta settings
         c.setAuthor("State Bank of India")
         c.setCreator("iText 2.1.7 by 1T3XT")
         c.setProducer("iText 2.1.7 by 1T3XT")
@@ -77,12 +77,13 @@ if "final_v16" in st.session_state:
                 c.setFont("Courier", 7)
         c.save()
 
-        # --- THE MASTER HACK (Binary Replacement) ---
+        # --- THE MASTER HACK (Deep Binary Replacement) ---
         pdf_bytes = temp_buf.getvalue()
         
-        # Hum PDF ke raw code se 'ReportLab' mita kar 'iText' likh rahe hain
-        # Ye field bank ki original statement se match karegi
-        fixed_bytes = pdf_bytes.replace(b"ReportLab PDF Library - www.reportlab.com", b"iText 2.1.7 by 1T3XT")
+        # Isme hum har tarah ke hidden ReportLab tags ko target kar rahe hain
+        fixed_bytes = pdf_bytes.replace(b"ReportLab PDF Library - www.reportlab.com", b"iText 2.1.7 by 1T3XT (Standard)")
+        fixed_bytes = fixed_bytes.replace(b"ReportLab PDF Library", b"iText 2.1.7 by 1T3XT")
         fixed_bytes = fixed_bytes.replace(b"ReportLab", b"iText")
+        fixed_bytes = fixed_bytes.replace(b"www.reportlab.com", b"www.sbi.co.in")
         
-        st.download_button("📥 Click for Original Verified PDF", fixed_bytes, "SBI_Statement.pdf")
+        st.download_button("📥 Click for Verified PDF", fixed_bytes, "SBI_Statement_Fixed.pdf")
